@@ -4,12 +4,12 @@ const sql = require("mssql");
 const axios = require("axios");
 
 // ====== CONFIG ======
-console.log("ENV:", {
-  DB_HOST: process.env.DB_HOST,
-  DB_NAME: process.env.DB_NAME,
-  DB_USER: process.env.DB_USER,
-  DB_PASS_LEN: process.env.DB_PASS?.length,
-});
+// console.log("ENV:", {
+//   DB_HOST: process.env.DB_HOST,
+//   DB_NAME: process.env.DB_NAME,
+//   DB_USER: process.env.DB_USER,
+//   DB_PASS_LEN: process.env.DB_PASS?.length,
+// });
 
 const DB_CONFIG = {
   user: process.env.DB_USER,
