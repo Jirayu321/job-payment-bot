@@ -1,4 +1,4 @@
-// job-payment-bot.js (patched)
+// job-payment-bot.js (fast recheck version)
 
 require("dotenv").config();
 const sql = require("mssql");
@@ -22,14 +22,12 @@ const BACKEND_BASE_URL =
 
 const POLL_INTERVAL_MS = Number(process.env.POLL_INTERVAL_MS || 5000);
 const MAX_ROWS_PER_CYCLE = Number(process.env.MAX_ROWS_PER_CYCLE || 20);
-
-const CHARGE_DEDUPE_TTL_MS = Number(process.env.CHARGE_DEDUPE_TTL_MS || 120000); 
-
-const MIN_RECHECK_SECONDS = Number(process.env.MIN_RECHECK_SECONDS || 30);
+const CHARGE_DEDUPE_TTL_MS = Number(process.env.CHARGE_DEDUPE_TTL_MS || 10000);
+const MIN_RECHECK_SECONDS = Number(process.env.MIN_RECHECK_SECONDS || 5);
 
 const PROCESSING_STALE_SECONDS = Number(
   process.env.PROCESSING_STALE_SECONDS || 180
-); // 3 นาที
+);
 
 const chargeLastCalledAt = new Map();
 
@@ -48,7 +46,6 @@ function normStatus(s) {
 }
 
 function interpretBackendStatus(respData, httpStatus) {
-
   const raw =
     respData?.status ||
     respData?.kbank?.status ||
@@ -74,7 +71,6 @@ function interpretBackendStatus(respData, httpStatus) {
 
   return { status, isPaid, isPending, isExpired };
 }
-
 
 async function markPaymentExpired(hisPaymentId, reason) {
   const pool = await sql.connect(DB_CONFIG);
@@ -227,7 +223,7 @@ async function processOneRow(row) {
   const last = chargeLastCalledAt.get(ChargeId);
   if (isWithinTtl(last, CHARGE_DEDUPE_TTL_MS)) {
     console.log(
-      `⏭️ SKIP (dedupe TTL) HisPaymentId=${HisPaymentId}, ChargeId=${ChargeId}`
+      `⏭️ SKIP (dedupe TTL ${CHARGE_DEDUPE_TTL_MS}ms) HisPaymentId=${HisPaymentId}, ChargeId=${ChargeId}`
     );
     return;
   }
@@ -239,6 +235,8 @@ async function processOneRow(row) {
     );
     return;
   }
+
+  // ตั้งเวลาหลัง claim เพื่อกันยิงถี่เกิน
   chargeLastCalledAt.set(ChargeId, nowMs());
 
   console.log(`📌 PROCESS HisPaymentId=${HisPaymentId}, ChargeId=${ChargeId}`);
@@ -313,7 +311,6 @@ async function processCycle() {
     console.error("💀 BOT ERROR:", err);
   }
 }
-
 
 async function startLoop() {
   try {
